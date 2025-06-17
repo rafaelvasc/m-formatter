@@ -3,43 +3,91 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Power Query Formatter</title>
+  <title>M Formatter - Formatador de Código Power Query</title>
   <style>
     html, body {
       height: 100%;
       margin: 0;
       display: flex;
       flex-direction: column;
-      font-family: "Segoe UI", sans-serif;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       background: #0d1117;
       color: #e6edf3;
     }
     header {
-      background: #161b22;
-      color: #e6edf3;
-      padding: 15px 20px;
+      background: linear-gradient(135deg, #238636 0%, #196127 100%);
+      color: white;
+      padding: 20px;
       text-align: center;
-      font-size: 20px;
-      font-weight: 600;
-      border-bottom: 1px solid #30363d;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
-    .editor-container {
+    .header-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin: 0;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .header-subtitle {
+      font-size: 16px;
+      margin: 5px 0 0 0;
+      opacity: 0.9;
+    }
+    .main-container {
       flex: 1;
       display: flex;
       flex-direction: column;
       margin: 20px;
+      gap: 20px;
+    }
+    .editor-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
       border: 1px solid #30363d;
-      border-radius: 8px;
+      border-radius: 12px;
       overflow: hidden;
+      background: #161b22;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .editor-header {
+      background: #21262d;
+      padding: 12px 20px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .editor-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: #f0f6fc;
+    }
+    .editor-stats {
+      font-size: 12px;
+      color: #7d8590;
+    }
+    .editor-content {
+      display: flex;
+      flex: 1;
+      min-height: 400px;
+    }
+    .line-numbers {
       background: #0d1117;
+      padding: 20px 12px;
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #6e7681;
+      border-right: 1px solid #30363d;
+      user-select: none;
+      min-width: 60px;
+      text-align: right;
     }
     #editor {
       flex: 1;
-      min-height: 400px;
-      font-family: 'Cascadia Code', 'Fira Code', 'Monaco', 'Consolas', monospace;
-      font-size: 14px;
-      line-height: 1.5;
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.6;
       padding: 20px;
       background: #0d1117;
       color: #e6edf3;
@@ -55,7 +103,7 @@
       background: #161b22;
     }
     .controls {
-      background: #161b22;
+      background: #21262d;
       padding: 15px 20px;
       display: flex;
       align-items: center;
@@ -66,36 +114,53 @@
     .controls-left {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
     .controls-right {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
-    button {
-      padding: 8px 16px;
+    .btn-primary {
+      padding: 10px 20px;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
       background: linear-gradient(180deg, #238636 0%, #196127 100%);
       color: white;
       border: 1px solid rgba(240,246,252,0.1);
+      border-radius: 8px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(180deg, #2ea043 0%, #238636 100%);
+      border-color: rgba(240,246,252,0.2);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .btn-secondary {
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      background: #21262d;
+      color: #f0f6fc;
+      border: 1px solid #30363d;
       border-radius: 6px;
       transition: all 0.2s;
     }
-    button:hover {
-      background: linear-gradient(180deg, #2ea043 0%, #238636 100%);
-      border-color: rgba(240,246,252,0.2);
+    .btn-secondary:hover {
+      background: #30363d;
+      border-color: #484f58;
     }
-    button:active {
-      background: #196127;
-      transform: translateY(1px);
-    }
-    button:disabled {
-      background: #6e7681;
-      cursor: not-allowed;
-      border-color: #30363d;
+    .btn:disabled {
+      background: #6e7681 !important;
+      cursor: not-allowed !important;
+      border-color: #30363d !important;
+      transform: none !important;
     }
     .loading {
       opacity: 0.7;
@@ -105,81 +170,145 @@
       color: #7d8590;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
+      font-weight: 500;
     }
-    .status.error {
-      color: #f85149;
-    }
-    .status.success {
-      color: #3fb950;
-    }
-    .line-numbers {
-      background: #161b22;
-      padding: 20px 10px;
-      font-family: 'Cascadia Code', 'Fira Code', 'Monaco', 'Consolas', monospace;
-      font-size: 14px;
-      line-height: 1.5;
-      color: #7d8590;
-      border-right: 1px solid #30363d;
-      user-select: none;
-      min-width: 50px;
-      text-align: right;
-    }
-    .editor-content {
-      display: flex;
-      flex: 1;
-    }
+    .status.success { color: #3fb950; }
+    .status.error { color: #f85149; }
+    .status.warning { color: #d29922; }
     .shortcut-hint {
       font-size: 11px;
-      color: #7d8590;
-      font-style: italic;
+      color: #6e7681;
+      background: #21262d;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #30363d;
     }
+    .format-options {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .format-options label {
+      font-size: 12px;
+      color: #f0f6fc;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .format-options input[type="checkbox"] {
+      accent-color: #238636;
+    }
+    .stats-info {
+      display: flex;
+      gap: 15px;
+      font-size: 11px;
+      color: #7d8590;
+    }
+    
+    /* Syntax highlighting simulation */
+    .keyword { color: #ff7b72; }
+    .string { color: #a5d6ff; }
+    .function { color: #d2a8ff; }
+    .comment { color: #8b949e; }
   </style>
 </head>
 <body>
-  <header>⚡ Power Query Formatter</header>
-  <div class="editor-container">
-    <div class="editor-content">
-      <div id="lineNumbers" class="line-numbers"></div>
-      <textarea id="editor" placeholder="Cole seu código Power Query M aqui...">let
-    Source = {"I", "am", "a", "demo", "query", "for", "powerqueryformatter!", "Hit", "format", "to", "make", "me", "pretty"},
-    #"Convert to Table" = Table.FromList(Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
-    #"Changed type" = Table.TransformColumnTypes(#"Convert to Table", {{"Column1", type text}}),
-    #"Rename Columns" = Table.RenameColumns(#"Changed type", {{"Column1", "Words"}}),
-    #"Added Index Column" = Table.AddIndexColumn(#"Rename Columns", "Index", 0, 1, Int64.Type)
+  <header>
+    <h1 class="header-title">🎨 M Formatter</h1>
+    <p class="header-subtitle">Formatador e Identador de Código Power Query M</p>
+  </header>
+  
+  <div class="main-container">
+    <div class="editor-section">
+      <div class="editor-header">
+        <div class="editor-title">📝 Editor de Código M</div>
+        <div class="editor-stats">
+          <div class="stats-info">
+            <span id="lineCount">Linhas: 0</span>
+            <span id="charCount">Caracteres: 0</span>
+          </div>
+        </div>
+      </div>
+      <div class="editor-content">
+        <div id="lineNumbers" class="line-numbers"></div>
+        <textarea id="editor" placeholder="Cole ou digite seu código Power Query M aqui...
+
+Exemplo:
+let
+Source = Excel.Workbook(File.Contents(&quot;C:\dados.xlsx&quot;)),
+Sheet1 = Source{[Name=&quot;Planilha1&quot;]}[Data],
+PromotedHeaders = Table.PromoteHeaders(Sheet1),
+ChangedTypes = Table.TransformColumnTypes(PromotedHeaders,{{&quot;ID&quot;, Int64.Type}, {&quot;Nome&quot;, type text}})
 in
-    #"Added Index Column"</textarea>
+ChangedTypes">let
+    Source = Excel.Workbook(File.Contents("C:\dados.xlsx")),
+    Sheet1 = Source{[Name="Planilha1"]}[Data],
+    PromotedHeaders = Table.PromoteHeaders(Sheet1),
+    ChangedTypes = Table.TransformColumnTypes(PromotedHeaders,{{"ID", Int64.Type}, {"Nome", type text}})
+in
+    ChangedTypes</textarea>
+      </div>
     </div>
-  </div>
-  <div class="controls">
-    <div class="controls-left">
-      <button id="formatButton">🎨 Formatar Código M</button>
-      <button id="localFormatButton">🔧 Formatar Local</button>
-      <div class="shortcut-hint">Ctrl+Enter</div>
-    </div>
-    <div class="controls-right">
-      <div id="status" class="status"></div>
+    
+    <div class="controls">
+      <div class="controls-left">
+        <button id="formatButton" class="btn-primary">
+          ✨ Formatar & Identar
+        </button>
+        <button id="clearButton" class="btn-secondary">🗑️ Limpar</button>
+        
+        <div class="format-options">
+          <label>
+            <input type="checkbox" id="addSpaces" checked>
+            Espaços ao redor de =
+          </label>
+          <label>
+            <input type="checkbox" id="breakLongLines" checked>
+            Quebrar linhas longas
+          </label>
+        </div>
+      </div>
+      
+      <div class="controls-right">
+        <div class="shortcut-hint">Ctrl+Enter para formatar</div>
+        <div id="status" class="status"></div>
+      </div>
     </div>
   </div>
 
   <script>
     const editor = document.getElementById('editor');
     const formatButton = document.getElementById('formatButton');
-    const localFormatButton = document.getElementById('localFormatButton');
+    const clearButton = document.getElementById('clearButton');
     const statusElement = document.getElementById('status');
     const lineNumbers = document.getElementById('lineNumbers');
+    const lineCount = document.getElementById('lineCount');
+    const charCount = document.getElementById('charCount');
+    const addSpaces = document.getElementById('addSpaces');
+    const breakLongLines = document.getElementById('breakLongLines');
 
     // Função para mostrar status
     function showStatus(message, type = 'info') {
       statusElement.textContent = message;
       statusElement.className = `status ${type}`;
       
-      if (type === 'success' || type === 'error') {
+      if (type === 'success' || type === 'error' || type === 'warning') {
         setTimeout(() => {
           statusElement.textContent = '';
           statusElement.className = 'status';
         }, 3000);
       }
+    }
+
+    // Função para atualizar estatísticas
+    function updateStats() {
+      const text = editor.value;
+      const lines = text.split('\n').length;
+      const chars = text.length;
+      
+      lineCount.textContent = `Linhas: ${lines}`;
+      charCount.textContent = `Caracteres: ${chars}`;
     }
 
     // Função para atualizar números das linhas
@@ -189,179 +318,148 @@ in
         `<div>${index + 1}</div>`
       ).join('');
       lineNumbers.innerHTML = lineNumbersHtml;
+      updateStats();
     }
 
-    // Função para formatar o código
-    async function formatCode() {
-      const rawCode = editor.value;
+    // Formatador principal de código M
+    function formatMCode(code) {
+      const options = {
+        addSpaces: addSpaces.checked,
+        breakLongLines: breakLongLines.checked
+      };
       
-      if (!rawCode.trim()) {
-        showStatus('Nenhum código para formatar', 'error');
-        return;
-      }
-
-      // Desabilita o botão e mostra loading
-      formatButton.disabled = true;
-      formatButton.classList.add('loading');
-      formatButton.textContent = '⏳ Formatando...';
-      showStatus('Tentando formatar online...');
-
-      try {
-        // Timeout para a requisição
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const response = await fetch('https://m-formatter.azurewebsites.net/api/v2/format', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({ text: rawCode }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`Servidor retornou erro ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        if (data.formattedText) {
-          editor.value = data.formattedText;
-          updateLineNumbers();
-          showStatus('✅ Código formatado online com sucesso!', 'success');
-        } else {
-          throw new Error('Resposta inválida do servidor');
-        }
-
-      } catch (error) {
-        console.log('API indisponível, usando formatação local:', error.message);
-        
-        // Sempre usa formatação local quando API falha
-        showStatus('🔧 Formatando localmente...', 'info');
-        
-        try {
-          const localFormatted = advancedLocalFormat(rawCode);
-          editor.value = localFormatted;
-          updateLineNumbers();
-          showStatus('✅ Formatado localmente (API indisponível)', 'success');
-        } catch (fallbackError) {
-          showStatus('❌ Erro na formatação local', 'error');
-        }
-      } finally {
-        // Reabilita o botão
-        formatButton.disabled = false;
-        formatButton.classList.remove('loading');
-        formatButton.textContent = '🎨 Formatar Código M';
-      }
-    }
-
-    // Formatação local avançada
-    function advancedLocalFormat(code) {
       const lines = code.split('\n');
       const formatted = [];
       let indentLevel = 0;
-      let inTableExpression = false;
+      let inLetBlock = false;
       
       for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
         
+        // Pula linhas vazias
         if (!line) {
           formatted.push('');
           continue;
         }
         
-        // Início do bloco let
-        if (line.startsWith('let')) {
+        // Detecta início do bloco let
+        if (line.toLowerCase().startsWith('let')) {
           formatted.push(line);
+          inLetBlock = true;
           indentLevel = 1;
           continue;
         }
         
-        // Final do bloco in
-        if (line.startsWith('in')) {
-          indentLevel = 0;
+        // Detecta final do bloco (in)
+        if (line.toLowerCase().startsWith('in')) {
           formatted.push(line);
+          inLetBlock = false;
+          indentLevel = 0;
           continue;
         }
         
-        // Detecta expressões Table
-        if (line.includes('Table.') || line.includes('#"')) {
-          inTableExpression = true;
-        }
-        
-        // Linhas com atribuição
-        if (line.includes('=')) {
-          // Remove espaços extras ao redor do =
-          line = line.replace(/\s*=\s*/, ' = ');
-          
-          // Indentação baseada no contexto
-          let indent = '    '.repeat(indentLevel);
-          
-          // Adiciona quebras de linha em funções longas
-          if (line.length > 100 && inTableExpression) {
-            line = formatLongTableExpression(line);
+        // Processa linhas com atribuição
+        if (line.includes('=') && inLetBlock) {
+          // Adiciona espaços ao redor do =
+          if (options.addSpaces) {
+            line = line.replace(/([^=!<>])\s*=\s*([^=])/g, '$1 = $2');
           }
           
+          // Quebra linhas muito longas
+          if (options.breakLongLines && line.length > 80) {
+            line = breakLongLine(line);
+          }
+          
+          // Aplica indentação
+          const indent = '    '.repeat(indentLevel);
+          
+          if (line.includes('\n')) {
+            // Linha já foi quebrada
+            const subLines = line.split('\n');
+            formatted.push(indent + subLines[0]);
+            for (let j = 1; j < subLines.length; j++) {
+              formatted.push('        ' + subLines[j].trim());
+            }
+          } else {
+            formatted.push(indent + line);
+          }
+        } else if (inLetBlock) {
+          // Linhas de continuação
+          const indent = '        ';
           formatted.push(indent + line);
         } else {
-          // Linhas de continuação
-          let indent = '    '.repeat(indentLevel + 1);
-          formatted.push(indent + line);
-        }
-        
-        // Reset da detecção de tabela se a linha termina com )
-        if (line.endsWith(')') || line.endsWith(',')) {
-          inTableExpression = false;
+          // Fora do bloco let/in
+          formatted.push(line);
         }
       }
       
       return formatted.join('\n');
     }
     
-    // Formata expressões Table longas
-    function formatLongTableExpression(line) {
-      // Quebra linhas longas em parâmetros de funções
-      if (line.includes('Table.') && line.includes('(') && line.includes(',')) {
-        const parts = line.split('(');
-        const functionName = parts[0] + '(';
-        const params = parts[1].replace(')', '');
-        
-        if (params.includes(',')) {
-          const paramList = params.split(',').map(p => p.trim());
-          if (paramList.length > 2) {
-            return functionName + '\n        ' + paramList.join(',\n        ') + '\n    )';
-          }
+    // Quebra linhas longas de forma inteligente
+    function breakLongLine(line) {
+      // Procura por pontos de quebra naturais
+      const breakPoints = [
+        { pattern: /,\s*(?=\w)/, replacement: ',\n' },
+        { pattern: /\(\s*(?=\w)/, replacement: '(\n' },
+        { pattern: /\s+and\s+/, replacement: '\nand ' },
+        { pattern: /\s+or\s+/, replacement: '\nor ' }
+      ];
+      
+      for (const bp of breakPoints) {
+        if (line.match(bp.pattern)) {
+          return line.replace(bp.pattern, bp.replacement);
         }
       }
       
       return line;
     }
 
-    // Event listeners
-    formatButton.addEventListener('click', formatCode);
-    localFormatButton.addEventListener('click', () => {
+    // Função principal de formatação
+    function formatCode() {
       const rawCode = editor.value;
+      
       if (!rawCode.trim()) {
-        showStatus('Nenhum código para formatar', 'error');
+        showStatus('⚠️ Nenhum código para formatar', 'warning');
         return;
       }
-      
-      showStatus('🔧 Formatando localmente...');
+
+      // Feedback visual
+      formatButton.disabled = true;
+      formatButton.classList.add('loading');
+      formatButton.innerHTML = '⏳ Formatando...';
+      showStatus('🎨 Formatando código...');
+
       try {
-        const formatted = advancedLocalFormat(rawCode);
+        const formatted = formatMCode(rawCode);
         editor.value = formatted;
         updateLineNumbers();
-        showStatus('✅ Formatado localmente!', 'success');
+        showStatus('✅ Código formatado com sucesso!', 'success');
       } catch (error) {
-        showStatus('❌ Erro na formatação local', 'error');
+        console.error('Erro na formatação:', error);
+        showStatus('❌ Erro durante a formatação', 'error');
+      } finally {
+        // Reabilita o botão
+        setTimeout(() => {
+          formatButton.disabled = false;
+          formatButton.classList.remove('loading');
+          formatButton.innerHTML = '✨ Formatar & Identar';
+        }, 500);
+      }
+    }
+
+    // Event listeners
+    formatButton.addEventListener('click', formatCode);
+    
+    clearButton.addEventListener('click', () => {
+      if (confirm('Tem certeza que deseja limpar todo o código?')) {
+        editor.value = '';
+        updateLineNumbers();
+        showStatus('🗑️ Editor limpo', 'success');
       }
     });
 
-    // Atalho de teclado
+    // Atalhos de teclado
     editor.addEventListener('keydown', function(e) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
@@ -379,20 +477,16 @@ in
       }
     });
 
-    // Atualiza números das linhas quando o conteúdo muda
+    // Atualiza interface quando conteúdo muda
     editor.addEventListener('input', updateLineNumbers);
+    
     editor.addEventListener('scroll', function() {
       lineNumbers.scrollTop = this.scrollTop;
     });
 
-    // Sincroniza scroll entre editor e números das linhas
-    lineNumbers.addEventListener('scroll', function() {
-      editor.scrollTop = this.scrollTop;
-    });
-
-    // Inicializa os números das linhas
+    // Inicialização
     updateLineNumbers();
-    showStatus('💡 Pronto para formatar! Use Ctrl+Enter como atalho');
+    showStatus('💡 Pronto! Cole seu código M e clique em Formatar');
   </script>
 </body>
 </html>
