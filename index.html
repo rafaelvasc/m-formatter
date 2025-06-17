@@ -11,39 +11,63 @@
       margin: 0;
       display: flex;
       flex-direction: column;
+      font-family: "Segoe UI", sans-serif;
     }
+
+    header {
+      background: #1e1e1e;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      font-size: 18px;
+    }
+
     #editor {
       flex: 1;
+      min-height: 300px;
     }
+
+    .controls {
+      background: #f3f3f3;
+      padding: 10px 20px;
+      text-align: right;
+      border-top: 1px solid #ccc;
+    }
+
     button {
-      padding: 12px;
-      font-size: 16px;
+      padding: 10px 16px;
+      font-size: 14px;
       cursor: pointer;
       background-color: #0078d4;
       color: white;
       border: none;
       border-radius: 4px;
-      margin: 8px;
+    }
+
+    button:hover {
+      background-color: #005ea1;
     }
   </style>
 </head>
 <body>
-  <button onclick="formatCode()">Formatar Código M</button>
+  <header>Power Query Formatter</header>
   <div id="editor"></div>
+  <div class="controls">
+    <button onclick="formatCode()">Formatar Código M</button>
+  </div>
 
   <script>
-    // Inicializa o editor
     require.config({ paths: { vs: 'https://unpkg.com/monaco-editor@0.45.0/min/vs' } });
     require(['vs/editor/editor.main'], function () {
       window.editor = monaco.editor.create(document.getElementById('editor'), {
-        value: "let\n    a = 1,\n    b = 2\nin\na + b",
+        value: `let\n    Source = {"I", "am", "a", "demo", "query", "for", "powerqueryformatter!", "Hit", "format", "to", "make", "me", "pretty"},\n    #"Convert to Table" = Table.FromList(Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error),\n    #"Changed type" = Table.TransformColumnTypes(#"Convert to Table", {{\"Column1\", type text}}),\n    #"Rename Columns" = Table.RenameColumns(#"Changed type", {{\"Column1\", \"Words\"}}),\n    #"Added Index Column" = Table.AddIndexColumn(#"Rename Columns", "Index", 0, 1, Int64.Type)\nin\n    #"Added Index Column"`,
         language: 'plaintext',
         theme: 'vs-dark',
-        automaticLayout: true
+        automaticLayout: true,
+        lineNumbers: 'on'
       });
     });
 
-    // Função que chama a API pública para formatar o código M
     async function formatCode() {
       const rawCode = window.editor.getValue();
 
