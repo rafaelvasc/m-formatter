@@ -1,21 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Power Query Formatter</title>
   <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
-  <script type="module">
-    import { format } from 'https://esm.sh/@microsoft/powerquery-formatter@0.3.16';
-
-    window.formatCode = async () => {
-      const rawCode = window.editor.getValue();
-      const result = format(rawCode);
-      window.editor.setValue(result);
-    };
-  </script>
   <style>
-    html, body, #container {
+    html, body {
       height: 100%;
       margin: 0;
       display: flex;
@@ -28,6 +19,11 @@
       padding: 12px;
       font-size: 16px;
       cursor: pointer;
+      background-color: #0078d4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      margin: 8px;
     }
   </style>
 </head>
@@ -36,6 +32,7 @@
   <div id="editor"></div>
 
   <script>
+    // Inicializa o editor
     require.config({ paths: { vs: 'https://unpkg.com/monaco-editor@0.45.0/min/vs' } });
     require(['vs/editor/editor.main'], function () {
       window.editor = monaco.editor.create(document.getElementById('editor'), {
@@ -45,6 +42,26 @@
         automaticLayout: true
       });
     });
+
+    // Função que chama a API pública para formatar o código M
+    async function formatCode() {
+      const rawCode = window.editor.getValue();
+
+      const response = await fetch('https://m-formatter.azurewebsites.net/api/v2/format', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text: rawCode })
+      });
+
+      const data = await response.json();
+      if (data.formattedText) {
+        window.editor.setValue(data.formattedText);
+      } else {
+        alert('Erro ao formatar o código.');
+      }
+    }
   </script>
 </body>
 </html>
