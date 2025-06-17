@@ -154,6 +154,7 @@ in
   <div class="controls">
     <div class="controls-left">
       <button id="formatButton">🎨 Formatar Código M</button>
+      <button id="localFormatButton">🔧 Formatar Local</button>
       <div class="shortcut-hint">Ctrl+Enter</div>
     </div>
     <div class="controls-right">
@@ -164,6 +165,7 @@ in
   <script>
     const editor = document.getElementById('editor');
     const formatButton = document.getElementById('formatButton');
+    const localFormatButton = document.getElementById('localFormatButton');
     const statusElement = document.getElementById('status');
     const lineNumbers = document.getElementById('lineNumbers');
 
@@ -202,20 +204,27 @@ in
       formatButton.disabled = true;
       formatButton.classList.add('loading');
       formatButton.textContent = '⏳ Formatando...';
-      showStatus('Formatando código...');
+      showStatus('Tentando formatar online...');
 
       try {
+        // Timeout para a requisição
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
         const response = await fetch('https://m-formatter.azurewebsites.net/api/v2/format', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          body: JSON.stringify({ text: rawCode })
+          body: JSON.stringify({ text: rawCode }),
+          signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          throw new Error(`Servidor retornou erro ${response.status}`);
         }
 
         const data = await response.json();
@@ -223,23 +232,24 @@ in
         if (data.formattedText) {
           editor.value = data.formattedText;
           updateLineNumbers();
-          showStatus('✅ Código formatado com sucesso!', 'success');
+          showStatus('✅ Código formatado online com sucesso!', 'success');
         } else {
           throw new Error('Resposta inválida do servidor');
         }
 
       } catch (error) {
-        console.error('Erro ao formatar:', error);
-        showStatus(`❌ Erro: ${error.message}`, 'error');
+        console.log('API indisponível, usando formatação local:', error.message);
         
-        // Fallback: formatação básica local
+        // Sempre usa formatação local quando API falha
+        showStatus('🔧 Formatando localmente...', 'info');
+        
         try {
-          const basicFormatted = basicFormat(rawCode);
-          editor.value = basicFormatted;
+          const localFormatted = advancedLocalFormat(rawCode);
+          editor.value = localFormatted;
           updateLineNumbers();
-          showStatus('⚠️ Aplicada formatação básica (servidor indisponível)', 'error');
+          showStatus('✅ Formatado localmente (API indisponível)', 'success');
         } catch (fallbackError) {
-          showStatus('❌ Erro na formatação', 'error');
+          showStatus('❌ Erro na formatação local', 'error');
         }
       } finally {
         // Reabilita o botão
@@ -249,24 +259,107 @@ in
       }
     }
 
-    // Formatação básica como fallback
-    function basicFormat(code) {
-      return code
-        .split('\n')
-        .map(line => {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('let') || trimmed.startsWith('in')) {
-            return trimmed;
-          } else if (trimmed.includes('=') && !trimmed.startsWith('let') && !trimmed.startsWith('in')) {
-            return '    ' + trimmed;
+    // Formatação local avançada
+    function advancedLocalFormat(code) {
+      const lines = code.split('\n');
+      const formatted = [];
+      let indentLevel = 0;
+      let inTableExpression = false;
+      
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+        
+        if (!line) {
+          formatted.push('');
+          continue;
+        }
+        
+        // Início do bloco let
+        if (line.startsWith('let')) {
+          formatted.push(line);
+          indentLevel = 1;
+          continue;
+        }
+        
+        // Final do bloco in
+        if (line.startsWith('in')) {
+          indentLevel = 0;
+          formatted.push(line);
+          continue;
+        }
+        
+        // Detecta expressões Table
+        if (line.includes('Table.') || line.includes('#"')) {
+          inTableExpression = true;
+        }
+        
+        // Linhas com atribuição
+        if (line.includes('=')) {
+          // Remove espaços extras ao redor do =
+          line = line.replace(/\s*=\s*/, ' = ');
+          
+          // Indentação baseada no contexto
+          let indent = '    '.repeat(indentLevel);
+          
+          // Adiciona quebras de linha em funções longas
+          if (line.length > 100 && inTableExpression) {
+            line = formatLongTableExpression(line);
           }
-          return line;
-        })
-        .join('\n');
+          
+          formatted.push(indent + line);
+        } else {
+          // Linhas de continuação
+          let indent = '    '.repeat(indentLevel + 1);
+          formatted.push(indent + line);
+        }
+        
+        // Reset da detecção de tabela se a linha termina com )
+        if (line.endsWith(')') || line.endsWith(',')) {
+          inTableExpression = false;
+        }
+      }
+      
+      return formatted.join('\n');
+    }
+    
+    // Formata expressões Table longas
+    function formatLongTableExpression(line) {
+      // Quebra linhas longas em parâmetros de funções
+      if (line.includes('Table.') && line.includes('(') && line.includes(',')) {
+        const parts = line.split('(');
+        const functionName = parts[0] + '(';
+        const params = parts[1].replace(')', '');
+        
+        if (params.includes(',')) {
+          const paramList = params.split(',').map(p => p.trim());
+          if (paramList.length > 2) {
+            return functionName + '\n        ' + paramList.join(',\n        ') + '\n    )';
+          }
+        }
+      }
+      
+      return line;
     }
 
     // Event listeners
     formatButton.addEventListener('click', formatCode);
+    localFormatButton.addEventListener('click', () => {
+      const rawCode = editor.value;
+      if (!rawCode.trim()) {
+        showStatus('Nenhum código para formatar', 'error');
+        return;
+      }
+      
+      showStatus('🔧 Formatando localmente...');
+      try {
+        const formatted = advancedLocalFormat(rawCode);
+        editor.value = formatted;
+        updateLineNumbers();
+        showStatus('✅ Formatado localmente!', 'success');
+      } catch (error) {
+        showStatus('❌ Erro na formatação local', 'error');
+      }
+    });
 
     // Atalho de teclado
     editor.addEventListener('keydown', function(e) {
