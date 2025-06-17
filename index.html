@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Power Query Formatter</title>
-  <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
   <style>
     html, body {
       height: 100%;
@@ -12,82 +11,295 @@
       display: flex;
       flex-direction: column;
       font-family: "Segoe UI", sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
     }
-
     header {
-      background: #1e1e1e;
-      color: white;
-      padding: 10px 20px;
+      background: #161b22;
+      color: #e6edf3;
+      padding: 15px 20px;
       text-align: center;
-      font-size: 18px;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 1px solid #30363d;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
     }
-
+    .editor-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      margin: 20px;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #0d1117;
+    }
     #editor {
       flex: 1;
-      min-height: 300px;
-    }
-
-    .controls {
-      background: #f3f3f3;
-      padding: 10px 20px;
-      text-align: right;
-      border-top: 1px solid #ccc;
-    }
-
-    button {
-      padding: 10px 16px;
+      min-height: 400px;
+      font-family: 'Cascadia Code', 'Fira Code', 'Monaco', 'Consolas', monospace;
       font-size: 14px;
-      cursor: pointer;
-      background-color: #0078d4;
-      color: white;
+      line-height: 1.5;
+      padding: 20px;
+      background: #0d1117;
+      color: #e6edf3;
       border: none;
-      border-radius: 4px;
+      outline: none;
+      resize: none;
+      tab-size: 4;
+      white-space: pre;
+      overflow-wrap: normal;
+      overflow-x: auto;
     }
-
+    #editor:focus {
+      background: #161b22;
+    }
+    .controls {
+      background: #161b22;
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid #30363d;
+      gap: 15px;
+    }
+    .controls-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .controls-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      background: linear-gradient(180deg, #238636 0%, #196127 100%);
+      color: white;
+      border: 1px solid rgba(240,246,252,0.1);
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
     button:hover {
-      background-color: #005ea1;
+      background: linear-gradient(180deg, #2ea043 0%, #238636 100%);
+      border-color: rgba(240,246,252,0.2);
+    }
+    button:active {
+      background: #196127;
+      transform: translateY(1px);
+    }
+    button:disabled {
+      background: #6e7681;
+      cursor: not-allowed;
+      border-color: #30363d;
+    }
+    .loading {
+      opacity: 0.7;
+    }
+    .status {
+      font-size: 12px;
+      color: #7d8590;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .status.error {
+      color: #f85149;
+    }
+    .status.success {
+      color: #3fb950;
+    }
+    .line-numbers {
+      background: #161b22;
+      padding: 20px 10px;
+      font-family: 'Cascadia Code', 'Fira Code', 'Monaco', 'Consolas', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #7d8590;
+      border-right: 1px solid #30363d;
+      user-select: none;
+      min-width: 50px;
+      text-align: right;
+    }
+    .editor-content {
+      display: flex;
+      flex: 1;
+    }
+    .shortcut-hint {
+      font-size: 11px;
+      color: #7d8590;
+      font-style: italic;
     }
   </style>
 </head>
 <body>
-  <header>Power Query Formatter</header>
-  <div id="editor"></div>
+  <header>⚡ Power Query Formatter</header>
+  <div class="editor-container">
+    <div class="editor-content">
+      <div id="lineNumbers" class="line-numbers"></div>
+      <textarea id="editor" placeholder="Cole seu código Power Query M aqui...">let
+    Source = {"I", "am", "a", "demo", "query", "for", "powerqueryformatter!", "Hit", "format", "to", "make", "me", "pretty"},
+    #"Convert to Table" = Table.FromList(Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Changed type" = Table.TransformColumnTypes(#"Convert to Table", {{"Column1", type text}}),
+    #"Rename Columns" = Table.RenameColumns(#"Changed type", {{"Column1", "Words"}}),
+    #"Added Index Column" = Table.AddIndexColumn(#"Rename Columns", "Index", 0, 1, Int64.Type)
+in
+    #"Added Index Column"</textarea>
+    </div>
+  </div>
   <div class="controls">
-    <button id="formatButton">Formatar Código M</button>
+    <div class="controls-left">
+      <button id="formatButton">🎨 Formatar Código M</button>
+      <div class="shortcut-hint">Ctrl+Enter</div>
+    </div>
+    <div class="controls-right">
+      <div id="status" class="status"></div>
+    </div>
   </div>
 
   <script>
-    // Carrega o editor
-    require.config({ paths: { vs: 'https://unpkg.com/monaco-editor@0.45.0/min/vs' } });
-    require(['vs/editor/editor.main'], function () {
-      window.editor = monaco.editor.create(document.getElementById('editor'), {
-        value: `let\n    Source = {"I", "am", "a", "demo", "query", "for", "powerqueryformatter!", "Hit", "format", "to", "make", "me", "pretty"},\n    #"Convert to Table" = Table.FromList(Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error),\n    #"Changed type" = Table.TransformColumnTypes(#"Convert to Table", {{\"Column1\", type text}}),\n    #"Rename Columns" = Table.RenameColumns(#"Changed type", {{\"Column1\", \"Words\"}}),\n    #"Added Index Column" = Table.AddIndexColumn(#"Rename Columns", "Index", 0, 1, Int64.Type)\nin\n    #"Added Index Column"`,
-        language: 'plaintext',
-        theme: 'vs-dark',
-        automaticLayout: true,
-        lineNumbers: 'on'
-      });
+    const editor = document.getElementById('editor');
+    const formatButton = document.getElementById('formatButton');
+    const statusElement = document.getElementById('status');
+    const lineNumbers = document.getElementById('lineNumbers');
 
-      // Só conecta o botão depois que o editor estiver carregado
-      document.getElementById('formatButton').addEventListener('click', async () => {
-        const rawCode = window.editor.getValue();
+    // Função para mostrar status
+    function showStatus(message, type = 'info') {
+      statusElement.textContent = message;
+      statusElement.className = `status ${type}`;
+      
+      if (type === 'success' || type === 'error') {
+        setTimeout(() => {
+          statusElement.textContent = '';
+          statusElement.className = 'status';
+        }, 3000);
+      }
+    }
 
+    // Função para atualizar números das linhas
+    function updateLineNumbers() {
+      const lines = editor.value.split('\n');
+      const lineNumbersHtml = lines.map((_, index) => 
+        `<div>${index + 1}</div>`
+      ).join('');
+      lineNumbers.innerHTML = lineNumbersHtml;
+    }
+
+    // Função para formatar o código
+    async function formatCode() {
+      const rawCode = editor.value;
+      
+      if (!rawCode.trim()) {
+        showStatus('Nenhum código para formatar', 'error');
+        return;
+      }
+
+      // Desabilita o botão e mostra loading
+      formatButton.disabled = true;
+      formatButton.classList.add('loading');
+      formatButton.textContent = '⏳ Formatando...';
+      showStatus('Formatando código...');
+
+      try {
         const response = await fetch('https://m-formatter.azurewebsites.net/api/v2/format', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
           },
           body: JSON.stringify({ text: rawCode })
         });
 
-        const data = await response.json();
-        if (data.formattedText) {
-          window.editor.setValue(data.formattedText);
-        } else {
-          alert('Erro ao formatar o código.');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-      });
+
+        const data = await response.json();
+        
+        if (data.formattedText) {
+          editor.value = data.formattedText;
+          updateLineNumbers();
+          showStatus('✅ Código formatado com sucesso!', 'success');
+        } else {
+          throw new Error('Resposta inválida do servidor');
+        }
+
+      } catch (error) {
+        console.error('Erro ao formatar:', error);
+        showStatus(`❌ Erro: ${error.message}`, 'error');
+        
+        // Fallback: formatação básica local
+        try {
+          const basicFormatted = basicFormat(rawCode);
+          editor.value = basicFormatted;
+          updateLineNumbers();
+          showStatus('⚠️ Aplicada formatação básica (servidor indisponível)', 'error');
+        } catch (fallbackError) {
+          showStatus('❌ Erro na formatação', 'error');
+        }
+      } finally {
+        // Reabilita o botão
+        formatButton.disabled = false;
+        formatButton.classList.remove('loading');
+        formatButton.textContent = '🎨 Formatar Código M';
+      }
+    }
+
+    // Formatação básica como fallback
+    function basicFormat(code) {
+      return code
+        .split('\n')
+        .map(line => {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('let') || trimmed.startsWith('in')) {
+            return trimmed;
+          } else if (trimmed.includes('=') && !trimmed.startsWith('let') && !trimmed.startsWith('in')) {
+            return '    ' + trimmed;
+          }
+          return line;
+        })
+        .join('\n');
+    }
+
+    // Event listeners
+    formatButton.addEventListener('click', formatCode);
+
+    // Atalho de teclado
+    editor.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        formatCode();
+      }
+      
+      // Tab para inserir 4 espaços
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = start + 4;
+        updateLineNumbers();
+      }
     });
+
+    // Atualiza números das linhas quando o conteúdo muda
+    editor.addEventListener('input', updateLineNumbers);
+    editor.addEventListener('scroll', function() {
+      lineNumbers.scrollTop = this.scrollTop;
+    });
+
+    // Sincroniza scroll entre editor e números das linhas
+    lineNumbers.addEventListener('scroll', function() {
+      editor.scrollTop = this.scrollTop;
+    });
+
+    // Inicializa os números das linhas
+    updateLineNumbers();
+    showStatus('💡 Pronto para formatar! Use Ctrl+Enter como atalho');
   </script>
 </body>
 </html>
